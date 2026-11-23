@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HazSight: Driver Drowsiness Detection with IoT Hazard-Light Activation</title>
+<meta name="description" content="HazSight is a Raspberry Pi 4-based driver drowsiness detection system that alerts the driver and wirelessly turns on an external hazard light to warn nearby road users. Research by Mapa, Leyva, Bellen and Alamo of Salvacion National High School.">
+<link rel="canonical" href="https://hazsight.com/">
+<meta name="author" content="Hans Phillip L. Mapa, Adrian Dex B. Leyva, Bea Joyce V. Bellen, Prince Jay-r L. Alamo">
+<meta name="keywords" content="HazSight, driver drowsiness detection, Raspberry Pi 4, IoT hazard light, OpenCV, MediaPipe, road safety">
+<meta property="og:type" content="website">
+<meta property="og:title" content="HazSight: Driver Drowsiness Detection with IoT Hazard-Light Activation">
+<meta property="og:description" content="A single second of warning costs nothing to give—and means everything to receive.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3f3f4;--surface:#ffffff;--line:#d6d6d9;--text:#121214;--muted:#55555b;--red:#c8102e;--red-soft:rgba(200,16,46,.10);--hero:#121214;--hero-text:#f4f4f5;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#09090a;--surface:#161618;--line:#2b2b2e;--text:#f1f1f2;--muted:#a0a0a6;--red:#ef2b3f;--red-soft:rgba(239,43,63,.14);--hero:#050505;--hero-text:#f4f4f5;color-scheme:dark}
+}
+:root[data-theme="dark"]{--bg:#09090a;--surface:#161618;--line:#2b2b2e;--text:#f1f1f2;--muted:#a0a0a6;--red:#ef2b3f;--red-soft:rgba(239,43,63,.14);--hero:#050505;--hero-text:#f4f4f5;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px);scroll-behavior:smooth}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.65;-webkit-text-size-adjust:100%}
+h1,h2,h3{font-family:"Space Grotesk","Inter",system-ui,sans-serif;line-height:1.1;margin:0;letter-spacing:-.02em}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--red);outline-offset:3px}
+.wrap{max-width:1040px;margin:0 auto;padding:0 22px}
+
+/* hero */
+.hero{background:var(--hero);color:var(--hero-text);padding:22px 0 72px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:6px;background:repeating-linear-gradient(115deg,var(--red) 0 22px,#2a2a2d 22px 44px)}
+nav{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:64px}
+.brand{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:1.15rem;text-decoration:none;display:flex;align-items:center;gap:10px}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--red)}
+nav ul{display:flex;gap:20px;list-style:none;margin:0;padding:0;font-size:.95rem}
+nav ul a{text-decoration:none;color:#b9b9bf}
+nav ul a:hover{color:#fff}
+.lights{display:flex;gap:14px;margin-bottom:28px}
+.lights i{width:28px;height:28px;border-radius:50%;background:var(--red);box-shadow:0 0 0 0 rgba(239,43,63,.7);animation:blink 1.2s infinite}
+.lights i:nth-child(2){animation-delay:.6s}
+@keyframes blink{0%,45%{opacity:1;box-shadow:0 0 40px 14px rgba(239,43,63,.8)}50%,100%{opacity:.22;box-shadow:none}}
+.hero h1{font-size:clamp(3rem,13vw,6.5rem);font-weight:700}
+.hero h1 span{color:var(--red)}
+.tagline{font-family:"Space Grotesk",sans-serif;font-size:clamp(1.25rem,3.6vw,1.9rem);line-height:1.35;max-width:24em;margin:22px 0 0;color:#e6e6e8;font-weight:500}
+.sub{max-width:36em;color:#a9a9b0;margin:20px 0 32px}
+.btns{display:flex;flex-wrap:wrap;gap:12px}
+.btn{display:inline-block;padding:13px 22px;border-radius:6px;text-decoration:none;font-weight:600;border:2px solid var(--red)}
+.btn.fill{background:var(--red);color:#fff}
+.btn.line{color:#fff}
+.btn:hover{filter:brightness(1.12)}
+
+section{padding:76px 0}
+section h2{font-size:clamp(1.9rem,5vw,2.8rem);margin-bottom:14px}
+.lead{color:var(--muted);max-width:40em;margin:0 0 36px}
+
+/* team */
+.team{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+.person{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--red);border-radius:6px;padding:20px}
+
+
+.avatar{width:46px;height:46px;border-radius:50%;background:var(--red);color:#fff;display:grid;place-items:center;font-family:"Space Grotesk",sans-serif;font-weight:700;margin-bottom:14px}
+.person h3{font-size:1.15rem;margin-bottom:6px}
+.role{color:var(--muted);font-size:.95rem;margin:0}
+
+/* device */
+.alt{background:var(--surface);border-block:1px solid var(--line)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px}
+.cell{padding:22px;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+.cell h3{font-size:1.2rem;margin-bottom:8px}
+.cell p{margin:0;color:var(--muted)}
+.flow{display:flex;flex-wrap:wrap;gap:10px;margin:34px 0 0;padding:0;list-style:none;font-weight:600}
+.flow li{background:var(--red-soft);border:1px solid var(--red);padding:10px 16px;border-radius:999px}
+.stack{margin-top:30px;color:var(--muted)}
+
+/* results */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}
+.stat{padding:22px;border-radius:6px;background:var(--hero);color:var(--hero-text)}
+.stat b{display:block;font-family:"Space Grotesk",sans-serif;font-size:3.2rem;line-height:1;color:var(--red);margin-bottom:10px}
+.stat span{color:#c4c4c9;font-size:.97rem}
+
+/* abstract */
+.abstract{max-width:44em}
+.abstract p{margin:0 0 1.15em;font-size:1.05rem}
+footer{background:var(--hero);color:#a9a9b0;padding:40px 0 48px;font-size:.95rem;border-top:6px solid var(--red)}
+footer strong{color:#fff}
+footer p{margin:4px 0}
+/* bolder type + glow + light interactions */
+body{font-weight:500}
+strong,b{font-weight:800}
+.hero{--mx:70%;--my:30%}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(520px circle at var(--mx) var(--my),rgba(239,43,63,.34),transparent 60%);pointer-events:none;transition:opacity .4s}
+.hero:has(.lights[aria-pressed="false"])::before{opacity:.3}
+.hero .wrap{position:relative;z-index:1}
+.hero h1{text-shadow:0 0 40px rgba(239,43,63,.45)}
+.school{margin:0 0 18px;font-weight:800;font-size:1.1rem;color:#fff;text-shadow:0 0 18px rgba(239,43,63,.7)}
+.hero h1 span{text-shadow:0 0 18px rgba(239,43,63,.95),0 0 64px rgba(239,43,63,.65)}
+.tagline{font-weight:700;text-shadow:0 0 24px rgba(239,43,63,.35)}
+.sub{font-weight:600;color:#c4c4ca}
+.sub strong{color:#fff}
+button.lights{background:none;border:0;padding:8px;margin:-8px 0 20px -8px;cursor:pointer;font:inherit;color:#a9a9b0;align-items:center;border-radius:999px}
+.lights small{font-size:.9rem;font-weight:600;margin-left:4px}
+.lights[aria-pressed="false"] i{animation:none;opacity:.22;box-shadow:none}
+section h2{font-weight:700}
+.lead{font-weight:600}
+.lead strong{color:var(--text)}
+.person{position:relative;overflow:hidden;transition:box-shadow .25s,transform .25s;box-shadow:-6px 0 22px -8px rgba(239,43,63,.6);--px:50%;--py:50%}
+.person::before{content:"";position:absolute;inset:0;background:radial-gradient(240px circle at var(--px) var(--py),var(--red-soft),transparent 70%);opacity:0;transition:opacity .25s;pointer-events:none}
+.person:hover::before,.person:focus-within::before{opacity:1}
+.person:hover{box-shadow:0 0 0 1px var(--red),0 0 30px rgba(239,43,63,.4);transform:translateY(-3px)}
+.person h3{font-family:"Inter",system-ui,sans-serif;font-weight:800;font-size:1.3rem;letter-spacing:-.01em}
+.role{font-weight:700}
+.cell{transition:border-color .25s,box-shadow .25s}
+.cell:hover{border-color:var(--red);box-shadow:0 0 26px var(--red-soft)}
+.cell h3{font-weight:700}
+.cell p{font-weight:500}
+.flow li{font-weight:700;animation:chase 4.8s infinite}
+.flow li:nth-child(2){animation-delay:1.2s}
+.flow li:nth-child(3){animation-delay:2.4s}
+.flow li:nth-child(4){animation-delay:3.6s}
+@keyframes chase{0%,18%{background:var(--red);color:#fff;box-shadow:0 0 24px rgba(239,43,63,.8)}26%,100%{background:var(--red-soft);color:var(--text);box-shadow:0 0 0 rgba(239,43,63,0)}}
+.stat{transition:box-shadow .25s,transform .25s}
+.stat b{font-weight:700;text-shadow:0 0 24px rgba(239,43,63,.65)}
+.stat span{font-weight:600}
+.stat:hover{box-shadow:0 0 32px rgba(239,43,63,.45);transform:translateY(-3px)}
+.abstract p{font-weight:500}
+.abstract strong{color:var(--red)}
+@media (prefers-reduced-motion:reduce){.lights i{animation:none;opacity:1}.flow li{animation:none}html{scroll-behavior:auto}.person,.stat{transition:none}}
+@media (max-width:560px){nav ul{gap:14px;font-size:.88rem}nav{margin-bottom:44px}section{padding:56px 0}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <nav>
+      <a class="brand" href="#top"><span class="dot"></span>HazSight</a>
+      <ul>
+        <li><a href="#team">Proponents</a></li>
+        <li><a href="#device">The device</a></li>
+        <li><a href="#results">Results</a></li>
+        <li><a href="#abstract">Abstract</a></li>
+      </ul>
+    </nav>
+    <p class="school">Salvacion National High School</p>
+    <button class="lights" id="lights" type="button" aria-pressed="true" aria-label="Hazard lights"><i></i><i></i><small>Tap the lights</small></button>
+    <h1 id="top">Haz<span>Sight</span></h1>
+    <p class="tagline">A single second of warning costs nothing to give—and means everything to receive.</p>
+    <p class="sub">A Raspberry Pi 4 driver drowsiness detection system that <strong>alerts the driver</strong> and switches on an <strong>external hazard light</strong> to warn the road around them.</p>
+    <div class="btns">
+      <a class="btn fill" href="#team">Meet the proponents</a>
+      <a class="btn line" href="#abstract">Read the abstract</a>
+    </div>
+  </div>
+</header>
+
+<main>
+<section id="team">
+  <div class="wrap">
+    <h2>The proponents</h2>
+    <p class="lead">The research team behind <strong>HazSight</strong>.</p>
+    <div class="team">
+      <article class="person">
+        
+        <h3>Hans Phillip L. Mapa</h3>
+        <p class="role">Project Leader, Programmer and Presentor</p>
+      </article>
+      <article class="person">
+        
+        <h3>Adrian Dex B. Leyva</h3>
+        <p class="role">Research Member and Presentor</p>
+      </article>
+      <article class="person">
+        
+        <h3>Bea Joyce V. Bellen</h3>
+        <p class="role">Research Member, Prototype Designer and Presentor</p>
+      </article>
+      <article class="person">
+        
+        <h3>Prince Jay-r L. Alamo</h3>
+        <p class="role">Research Member and Programmer</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="device" class="alt">
+  <div class="wrap">
+    <h2>Meet the HazSight device</h2>
+    <p class="lead"><strong>Driver drowsiness</strong> is one of the major factors behind unsafe driving. HazSight watches the driver’s face in real time, and when it sees signs of drowsiness it <strong>warns the driver</strong> and <strong>lights up a hazard light</strong> so nearby drivers know to give space.</p>
+    <div class="cols">
+      <div class="cell"><h3>Prolonged eye closure</h3><p>Detected within 1.0 second of the eyes staying shut.</p></div>
+      <div class="cell"><h3>Yawning</h3><p>Prolonged yawning, sustained for 1.5 seconds, is treated as a sign of drowsiness.</p></div>
+      <div class="cell"><h3>No face detected</h3><p>If the driver’s face is absent from the camera, HazSight responds within 3 seconds.</p></div>
+    </div>
+    <ul class="flow" aria-label="How HazSight responds">
+      <li>Camera watches the driver</li>
+      <li>Drowsiness is detected</li>
+      <li>Driver is alerted</li>
+      <li>Hazard light turns on wirelessly</li>
+    </ul>
+    <p class="stack">Built on a Raspberry Pi 4 with an IR-Cut OV5647 camera, using Python, OpenCV and MediaPipe, with IoT-enabled wireless hazard-light activation.</p>
+  </div>
+</section>
+
+<section id="results">
+  <div class="wrap">
+    <h2>What we found</h2>
+    <p class="lead">HazSight was evaluated on feature performance, hazard-light recognition by nearby drivers, and general acceptability.</p>
+    <div class="stats">
+      <div class="stat"><b>96%</b><span>accuracy in alerting drivers and activating the external hazard light</span></div>
+      <div class="stat"><b>100%</b><span>accuracy in closed-eye detection within 1.0 second</span></div>
+      <div class="stat"><b>100%</b><span>accuracy in no-face detection within 3 seconds</span></div>
+      <div class="stat"><b>86%</b><span>accuracy in yawn detection sustained for 1.5 seconds</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="abstract" class="alt">
+  <div class="wrap">
+    <h2>Abstract</h2>
+    <div class="abstract">
+      <p>Road safety remains a major concern worldwide, as road traffic crashes continue to cause substantial loss of life and injury. One major factor contributing to unsafe driving is driver drowsiness. This study developed the <strong>HazSight device</strong>, a Raspberry Pi 4-based driver drowsiness detection system with Internet of Things IoT-enabled wireless hazard-light activation designed to alert drivers and nearby road users. The system uses an IR-Cut OV5647 camera with Python, OpenCV, and MediaPipe to detect prolonged eye closure, yawning and the absence of a face.</p>
+      <p>The HazSight device was evaluated for its feature’s performance, hazard light activation for nearby-driver recognition and its general acceptability. The results show that the device demonstrated continuous real-time monitoring of the driver’s facial condition through automatic activation of an external hazard light upon detecting drowsiness. The device was evaluated with <strong>96% accuracy rate</strong> in alerting drivers and external hazard light activation. The accuracy of the device achieved <strong>100% accuracy rate</strong> in closed-eye detection within 1.0 second and in no-face detection within 3 seconds, while the accuracy in yawn detection sustained for 1.5 seconds registered an <strong>86% accuracy rate</strong>. The HazSight device is highly reliable in recognizing prolonged yawning as an indicator of drowsiness.</p>
+      <p>The general acceptability of the device was found to be <strong>highly reliable, user-friendly and highly functional</strong>. It demonstrated a comparable accuracy with selected existing systems while its nearby-driver warning capability could not be directly compared. The HazSight device showed a relatively lower development cost, while maintaining comparable detection performance.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>HazSight</strong> — Driver Drowsiness Detection with IoT-Enabled Wireless Hazard-Light Activation</p>
+    <p>Hans Phillip L. Mapa, Adrian Dex B. Leyva, Bea Joyce V. Bellen and Prince Jay-r L. Alamo</p>
+    <p>Salvacion National High School</p>
+  </div>
+</footer>
+<script>
+(function(){
+  var hero=document.querySelector('.hero');
+  function glow(e){var r=hero.getBoundingClientRect();hero.style.setProperty('--mx',(e.clientX-r.left)+'px');hero.style.setProperty('--my',(e.clientY-r.top)+'px');}
+  hero.addEventListener('pointermove',glow);hero.addEventListener('pointerdown',glow);
+  document.querySelectorAll('.person').forEach(function(c){
+    c.addEventListener('pointermove',function(e){var r=c.getBoundingClientRect();c.style.setProperty('--px',(e.clientX-r.left)+'px');c.style.setProperty('--py',(e.clientY-r.top)+'px');});
+  });
+  var b=document.getElementById('lights'),t=b.querySelector('small');
+  b.addEventListener('click',function(){
+    var on=b.getAttribute('aria-pressed')==='true';
+    b.setAttribute('aria-pressed',on?'false':'true');
+    t.textContent=on?'Lights off. Tap to turn them on':'Tap the lights';
+  });
+})();
+</script>
+</body>
+</html>
